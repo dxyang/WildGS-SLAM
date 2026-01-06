@@ -203,7 +203,10 @@ python scripts_run/summarize_pose_eval.py
 ```
 
 ### Novel View Synthesis
-Only support for Wild-SLAM Mocap dataset. (Todo: this needs some time to be released)
+Only support for Wild-SLAM Mocap dataset.
+```bash
+python eval_map/nvs_wild_slam.py
+```
 
 ## Acknowledgement
 We adapted some codes from some awesome repositories including [MonoGS](https://github.com/muskie82/MonoGS), [DROID-SLAM](https://github.com/princeton-vl/DROID-SLAM), [Splat-SLAM](https://github.com/google-research/Splat-SLAM), [GIORIE-SLAM](https://github.com/zhangganlin/GlORIE-SLAM), [nerf-on-the-go](https://github.com/cvg/nerf-on-the-go) and [Metric3D V2](https://github.com/YvanYin/Metric3D). Thanks for making codes publicly available. 
