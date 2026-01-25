@@ -17,7 +17,7 @@ from src.tracker import Tracker
 from src.mapper import Mapper
 from src.backend import Backend
 from src.utils.dyn_uncertainty.uncertainty_model import generate_uncertainty_mlp
-from src.utils.datasets import RGB_NoPose
+from src.utils.datasets import RGB_NoPose, AUV_RGB_NoPose
 from src.gui import gui_utils, slam_gui
 from thirdparty.gaussian_splatting.scene.gaussian_model import GaussianModel
 
@@ -152,7 +152,7 @@ class SLAM:
             and self.cfg["mapping"]["eval_before_final_ba"]
         ):
             self.video.save_video(f"{self.save_dir}/video.npz")
-            if not isinstance(self.stream, RGB_NoPose):
+            if not (isinstance(self.stream, RGB_NoPose) or isinstance(self.stream, AUV_RGB_NoPose)):
                 try:
                     ate_statistics, global_scale, r_a, t_a = kf_traj_eval(
                         f"{self.save_dir}/video.npz",
@@ -174,7 +174,7 @@ class SLAM:
             self.backend()
 
         self.video.save_video(f"{self.save_dir}/video.npz")
-        if not isinstance(self.stream, RGB_NoPose):
+        if not (isinstance(self.stream, RGB_NoPose) or isinstance(self.stream, AUV_RGB_NoPose)):
             try:
                 ate_statistics, global_scale, r_a, t_a = kf_traj_eval(
                     f"{self.save_dir}/video.npz",

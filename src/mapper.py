@@ -53,7 +53,7 @@ class Mapper(object):
     """
 
     def __init__(
-        self, slam, pipe: Connection, uncer_network: Optional[nn.Module] = None, 
+        self, slam, pipe: Connection, uncer_network: Optional[nn.Module] = None,
         q_main2vis: Optional[mp.Queue] = None, q_vis2main: Optional[mp.Queue] = None
     ):
         # setup seed
@@ -189,7 +189,7 @@ class Mapper(object):
                 self.is_kf[video_idx] = False
                 self.pipe.send("continue")
                 continue  # too few valid pixels from droid depth
-            
+
             # Update the map if depth/pose of any keyframe has been updated
             self._update_keyframes_from_frontend()
             self.frame_idxs.append(frame_idx)
@@ -704,7 +704,7 @@ class Mapper(object):
             window.remove(removed_frame)
 
         return window, removed_frame
-    
+
     def _send_to_gui(self, video_idx):
         """Send data to the GUI for visualization.
         """
@@ -712,7 +712,7 @@ class Mapper(object):
         keyframes = [self.cameras[kf_idx] for kf_idx in self.current_window]
         uncertainty_map = self.get_viewpoint_uncertainty_no_grad(viewpoint)
         uncertainty_map = uncertainty_map.cpu().squeeze(0).numpy()
-        
+
         current_window_dict = {}
         current_window_dict[self.current_window[0]] = self.current_window[1:]
         keyframes = [self.cameras[kf_idx] for kf_idx in self.current_window]
@@ -1365,7 +1365,7 @@ class Mapper(object):
 
         if self.vis_uncertainty_online:
             self._vis_uncertainty_mask_all(is_final=True)
-        
+
         if self.config['gui']:
             self._send_to_gui(self.current_window[np.array(self.current_window).argmax()])
 
@@ -1537,7 +1537,7 @@ class Mapper(object):
         axs[0, 3].set_title("Uncertainty", fontsize=16)
         axs[1, 3].imshow(ssim_loss, cmap='jet', vmin=0, vmax=5)
         axs[1, 3].set_title("ssim_loss", fontsize=16)
-        
+
         for i in range(2):
             for j in range(4):
                 axs[i, j].axis('off')
@@ -1556,7 +1556,7 @@ class Mapper(object):
         self,
         save_dir: str,
         iteration: Union[str, float] ="after_refine",
-    ): 
+    ):
         """
         Save figures for all keyframes in the specified directory.
 
@@ -1565,8 +1565,8 @@ class Mapper(object):
 
         Args:
             save_dir (str): The base directory where figures will be saved.
-            iteration (Union[str, float]): A string or float representing the 
-                                        iteration or stage of the process. 
+            iteration (Union[str, float]): A string or float representing the
+                                        iteration or stage of the process.
                                         Default is "after_refine".
         """
         video_idxs = self.video_idxs

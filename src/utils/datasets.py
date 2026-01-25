@@ -48,16 +48,16 @@ def load_metric_depth(idx,path):
     mono_depth_path = f"{path}/mono_priors/depths/{idx:05d}.npy"
     mono_depth = np.load(mono_depth_path)
     mono_depth_tensor = torch.from_numpy(mono_depth)
-    
-    return mono_depth_tensor  
+
+    return mono_depth_tensor
 
 def load_img_feature(idx,path,suffix=''):
     # image features
     feat_path = f"{path}/mono_priors/features/{idx:05d}{suffix}.npy"
     feat = np.load(feat_path)
     feat_tensor = torch.from_numpy(feat)
-    
-    return feat_tensor  
+
+    return feat_tensor
 
 
 def get_dataset(cfg, device='cuda:0'):
@@ -156,21 +156,21 @@ class BaseDataset(Dataset):
         intrinsic[0] *= W_out_with_edge / self.W
         intrinsic[1] *= H_out_with_edge / self.H
         intrinsic[2] *= W_out_with_edge / self.W
-        intrinsic[3] *= H_out_with_edge / self.H   
+        intrinsic[3] *= H_out_with_edge / self.H
         if self.W_edge > 0:
             intrinsic[2] -= self.W_edge
         if self.H_edge > 0:
-            intrinsic[3] -= self.H_edge   
-        return intrinsic 
-    
+            intrinsic[3] -= self.H_edge
+        return intrinsic
+
     def get_intrinsic_full_resol(self):
         intrinsic = torch.as_tensor([self.fx_orig, self.fy_orig, self.cx_orig, self.cy_orig]).float()
         if self.W_edge > 0:
             intrinsic[2] -= self.W_edge_full
         if self.H_edge > 0:
             intrinsic[3] -= self.H_edge_full
-        return intrinsic 
-    
+        return intrinsic
+
     def get_color_full_resol(self,index):
         # not used now
         color_path = self.color_paths[index]
@@ -388,7 +388,7 @@ class TUM_RGBD(BaseDataset):
         self.w2c_first_pose = inv_pose
 
         return images, depths, poses
-    
+
     def correct_gt_pose_bonn(self, T):
         """Specific operation for Bonn dynamic dataset"""
         Tm = np.array([[1.0157, 0.1828, -0.2389, 0.0113],
@@ -420,7 +420,7 @@ class SevenScenes(BaseDataset):
             glob.glob(f'{self.input_folder}/seq-01/*.color.png'))
         self.depth_paths = sorted(
             glob.glob(f'{self.input_folder}/seq-01/*.depth.png'))
-        
+
         scene_name = os.path.basename(self.input_folder)
         pose_data = np.loadtxt(os.path.join(self.input_folder, f'../{scene_name}.txt'),dtype=np.unicode_)
         pose_vecs = pose_data[:, 1:].astype(np.float64)
@@ -472,6 +472,23 @@ class RGB_NoPose(BaseDataset):
         self.color_paths = self.color_paths[:max_frames][::stride]
         self.n_img = len(self.color_paths)
 
+class AUV_RGB_NoPose(BaseDataset):
+    def __init__(self, cfg, device='cuda:0'
+                 ):
+        super(AUV_RGB_NoPose, self).__init__(cfg, device)
+        self.color_paths = sorted(
+            glob.glob(f'{self.input_folder}/{cfg["scene"]}/*.png'))
+        self.depth_paths = None
+        self.poses = None
+
+        stride = cfg['stride']
+        max_frames = cfg['max_frames']
+        if max_frames < 0:
+            max_frames = len(self.color_paths)
+
+        self.color_paths = self.color_paths[:max_frames][::stride]
+        self.n_img = len(self.color_paths)
+
 dataset_dict = {
     "replica": Replica,
     "scannet": ScanNet,
@@ -479,5 +496,6 @@ dataset_dict = {
     "bonn_dynamic": TUM_RGBD,
     "wild_slam_mocap": TUM_RGBD,
     "7scenes": SevenScenes,
-    "wild_slam_iphone": RGB_NoPose
+    "wild_slam_iphone": RGB_NoPose,
+    "auv_rosbag": AUV_RGB_NoPose
 }

@@ -14,7 +14,7 @@ from src.utils.Printer import FontColor
 from src.utils.dyn_uncertainty import mapping_utils as map_utils
 
 class DepthVideo:
-    ''' store the estimated poses and depth maps, 
+    ''' store the estimated poses and depth maps,
         shared between tracker and mapper '''
     def __init__(self, cfg, printer, uncer_network=None):
         self.cfg =cfg
@@ -40,8 +40,8 @@ class DepthVideo:
         self.images = torch.zeros(buffer, 3, ht, wd, device='cpu', dtype=torch.float32)
 
         # whether the valid_depth_mask is calculated/updated, if dirty, not updated, otherwise, updated
-        self.dirty = torch.zeros(buffer, device=self.device, dtype=torch.bool).share_memory_() 
-        # whether the corresponding part of pointcloud is deformed w.r.t. the poses and depths 
+        self.dirty = torch.zeros(buffer, device=self.device, dtype=torch.bool).share_memory_()
+        # whether the corresponding part of pointcloud is deformed w.r.t. the poses and depths
         self.npc_dirty = torch.zeros(buffer, device=self.device, dtype=torch.bool).share_memory_()
 
         self.poses = torch.zeros(buffer, 7, device=self.device, dtype=torch.float).share_memory_()
@@ -55,25 +55,31 @@ class DepthVideo:
         self.depth_scale = torch.zeros(buffer,device=self.device, dtype=torch.float).share_memory_()
         self.depth_shift = torch.zeros(buffer,device=self.device, dtype=torch.float).share_memory_()
         self.valid_depth_mask = torch.zeros(buffer, ht, wd, device=self.device, dtype=torch.bool).share_memory_()
-        self.valid_depth_mask_small = torch.zeros(buffer, ht//self.down_scale, wd//self.down_scale, device=self.device, dtype=torch.bool).share_memory_()        
+        self.valid_depth_mask_small = torch.zeros(buffer, ht//self.down_scale, wd//self.down_scale, device=self.device, dtype=torch.bool).share_memory_()
         ### feature attributes ###
         self.fmaps = torch.zeros(buffer, 1, 128, ht//self.down_scale, wd//self.down_scale, dtype=torch.half, device=self.device).share_memory_()
         self.nets = torch.zeros(buffer, 128, ht//self.down_scale, wd//self.down_scale, dtype=torch.half, device=self.device).share_memory_()
         self.inps = torch.zeros(buffer, 128, ht//self.down_scale, wd//self.down_scale, dtype=torch.half, device=self.device).share_memory_()
 
+        print(f"----------------------DXY LOOK HERE")
+        print(ht)
+        print(wd)
+        print(self.down_scale)
+        print(ht // self.down_scale, wd // self.down_scale)
+
         # initialize poses to identity transformation
         self.poses[:] = torch.as_tensor([0, 0, 0, 0, 0, 0, 1], dtype=torch.float, device=self.device)
         self.printer = printer
-        
+
         self.uncertainty_aware = cfg['tracking']["uncertainty_params"]['activate']
         self.uncer_network = uncer_network
         if self.uncertainty_aware:
             n_features = self.cfg["mapping"]["uncertainty_params"]['feature_dim']
-            
+
             # This check is to ensure the size of self.dino_feats
             if self.cfg["mono_prior"]["feature_extractor"] not in ["dinov2_reg_small_fine", "dinov2_small_fine","dinov2_vits14", "dinov2_vits14_reg"]:
                 raise ValueError("You are using a new feature extractor, make sure the downsample factor is 14")
-            
+
             # The followings are in cpu to save memory
             self.dino_feats = torch.zeros(buffer, ht//14, wd//14, n_features, device='cpu', dtype=torch.float).share_memory_()
             self.dino_feats_resize = torch.zeros(buffer, n_features, ht//self.down_scale, wd//self.down_scale, device='cpu', dtype=torch.float).share_memory_()
@@ -88,7 +94,7 @@ class DepthVideo:
     def __item_setter(self, index, item):
         if isinstance(index, int) and index >= self.counter.value:
             self.counter.value = index + 1
-        
+
         elif isinstance(index, torch.Tensor) and index.max().item() > self.counter.value:
             self.counter.value = index.max().item() + 1
 
@@ -125,11 +131,11 @@ class DepthVideo:
 
             if len(item[9].shape) == 3:
                 self.dino_feats_resize[index] = F.interpolate(item[9].permute(2,0,1).unsqueeze(0),
-                                                            self.disps_up.shape[-2:], 
+                                                            self.disps_up.shape[-2:],
                                                             mode='bilinear').squeeze()[:,self.slice_h,self.slice_w].cpu()
             else:
                 self.dino_feats_resize[index] = F.interpolate(item[9].permute(0,3,1,2),
-                                                            self.disps_up.shape[-2:], 
+                                                            self.disps_up.shape[-2:],
                                                             mode='bilinear')[:,:,self.slice_h,self.slice_w].cpu()
 
     def __setitem__(self, index, item):
@@ -210,7 +216,7 @@ class DepthVideo:
             return_matrix = True
             N = self.counter.value
             ii, jj = torch.meshgrid(torch.arange(N), torch.arange(N),indexing="ij")
-        
+
         ii, jj = DepthVideo.format_indicies(ii, jj)
 
         if bidirectional:
@@ -233,22 +239,22 @@ class DepthVideo:
             return d.reshape(N, N)
 
         return d
-    
+
     def project_images_with_mask(self, images, pixel_positions, masks=None):
-        """ 
+        """
             Project images/depths from the input pixel positions using bilinear interpolation.
             This function will automatically return the mask where the given pixel positions are out of the images
         Args:
             images (torch.Tensor): A tensor of shape [B, C, H, W] representing the images/depths.
-            pixel_positions (torch.Tensor): A tensor of shape [B, H, W, 2] containing float 
+            pixel_positions (torch.Tensor): A tensor of shape [B, H, W, 2] containing float
                                             pixel positions for interpolation. Note that [:,:,:,0]
                                             is width and [:,:,:,1] is height.
-            masks (torch.Tensor, optional): A boolean tensor of shape [B, H, W]. If provided, 
-                                            specifies valid pixels. Default is None, which 
+            masks (torch.Tensor, optional): A boolean tensor of shape [B, H, W]. If provided,
+                                            specifies valid pixels. Default is None, which
                                             results in all pixels being valid at the begining.
-        
+
         Returns:
-            torch.Tensor: A tensor of shape [B, C, H, W] containing the projected images/depths, 
+            torch.Tensor: A tensor of shape [B, C, H, W] containing the projected images/depths,
                         where invalid pixels are set to 0.
             torch.Tensor: The combined mask that filters out invalid positions and applies
                       the original mask.
@@ -259,7 +265,7 @@ class DepthVideo:
         # If masks are not provided, create a mask of all ones (True) with the same shape as the images
         if masks is None:
             masks = torch.ones(B, H, W, dtype=torch.bool, device=device)
-        
+
         # Normalize pixel positions to range [-1, 1]
         grid = pixel_positions.clone()
         grid[..., 0] = 2.0 * (grid[..., 0] / (W - 1)) - 1.0
@@ -275,7 +281,7 @@ class DepthVideo:
         # Apply the combined mask: set to 0 where combined mask is False
         projected_image = projected_image.permute(0, 2, 3, 1)  # conver to [B, H, W, C]
         projected_image = projected_image * valid_mask.unsqueeze(-1)
-        
+
         return projected_image.permute(0, 3, 1, 2), valid_mask  # Return to [B, C, H, W]
 
     @torch.no_grad()
@@ -292,8 +298,8 @@ class DepthVideo:
         ii = torch.tensor(idx).repeat(jj.shape[0])
 
         # all frames share the same intrinsics
-        X0, _ = pops.iproj(self.mono_disps_up[jj].unsqueeze(0), 
-                      self.intrinsics[0].unsqueeze(0).repeat(1,jj.shape[0],1)*self.down_scale, 
+        X0, _ = pops.iproj(self.mono_disps_up[jj].unsqueeze(0),
+                      self.intrinsics[0].unsqueeze(0).repeat(1,jj.shape[0],1)*self.down_scale,
                       jacobian=False)
         Gs = lietorch.SE3(self.poses[None])
         Gji = Gs[:,ii] * Gs[:,jj].inv()
@@ -309,17 +315,17 @@ class DepthVideo:
         # projected point is valid only if its inside the image range and the depth is greater than 0
         valid_mask = (x1_rounded[..., 1] >= 0) & (x1_rounded[..., 1] < x1.shape[2]) & \
                     (x1_rounded[..., 0] >= 0) & (x1_rounded[..., 0] < x1.shape[3]) & (x1[...,2]>0)
-        
+
         i_dino = F.interpolate(self.dino_feats[idx].permute(2,0,1).unsqueeze(0),
-                                self.disps_up.shape[-2:], 
+                                self.disps_up.shape[-2:],
                                 mode='bilinear').to(self.device).squeeze()
         for j_id in range(jj.shape[0]):
             projected_j_to_i = x1[0, j_id]
             x_coords, y_coords = x1_rounded[0, j_id, ..., 0], x1_rounded[0, j_id, ..., 1]
-            
+
             # Select valid coordinates and their Dino features
             j_dino = F.interpolate(self.dino_feats[jj[j_id]].permute(2,0,1).unsqueeze(0),
-                                    self.disps_up.shape[-2:], 
+                                    self.disps_up.shape[-2:],
                                     mode='bilinear').to(self.device).squeeze()
             valid_x, valid_y = x_coords[valid_mask[0, j_id]], y_coords[valid_mask[0, j_id]]
             j_dino_valid = j_dino[:, valid_mask[0, j_id]]
@@ -366,10 +372,10 @@ class DepthVideo:
                     target, weight, eta, ii, jj, t0, t1, iters, lm, ep, motion_only, False)
             else:
                 mono_valid_mask = self.mono_disps_mask_up[:,self.slice_h,self.slice_w].clone().to(self.device)
-                
+
                 droid_backends.ba(self.poses, self.disps, self.intrinsics[0], self.mono_disps*mono_valid_mask,
                     target, weight, eta, ii, jj, t0, t1, iters, lm, ep, motion_only, False)
-            
+
             self.disps.clamp_(min=1e-5)
 
 
@@ -403,11 +409,11 @@ class DepthVideo:
                 depth_mask = self.valid_depth_mask[index].clone().to(device)
                 c2w = self.get_pose(index,device)
         return est_depth, depth_mask, c2w
-    
+
     @torch.no_grad()
     def update_valid_depth_mask(self,up=True):
         '''
-        For each pixel, check whether the estimated depth value is valid or not 
+        For each pixel, check whether the estimated depth value is valid or not
         by the two-view consistency check, see eq.4 ~ eq.7 in the paper for details
 
         up (bool): if True, check on the orignial-scale depth map
@@ -426,27 +432,27 @@ class DepthVideo:
         common_intrinsic_id = 0  # we assume the intrinsics are the same within one scene
         intrinsic = self.intrinsics[common_intrinsic_id].detach() * (self.down_scale if up else 1.0)
         depths = 1.0/disps
-        thresh = self.cfg['tracking']['multiview_filter']['thresh'] * depths.mean(dim=[1,2]) 
+        thresh = self.cfg['tracking']['multiview_filter']['thresh'] * depths.mean(dim=[1,2])
         count = droid_backends.depth_filter(
             self.poses, self.disps_up if up else self.disps, intrinsic, dirty_index, thresh)
         filter_visible_num = self.cfg['tracking']['multiview_filter']['visible_num']
-        multiview_masks = (count >= filter_visible_num) 
+        multiview_masks = (count >= filter_visible_num)
         depths[~multiview_masks]=torch.nan
         depths_reshape = depths.view(depths.shape[0],-1)
         depths_median = depths_reshape.nanmedian(dim=1).values
         masks = depths < 3*depths_median[:,None,None]
         if up:
-            self.valid_depth_mask[dirty_index] = masks 
+            self.valid_depth_mask[dirty_index] = masks
             self.dirty[dirty_index] = False
         else:
-            self.valid_depth_mask_small[dirty_index] = masks 
+            self.valid_depth_mask_small[dirty_index] = masks
 
     @torch.no_grad()
     def update_all_uncertainty_mask(self):
         if not self.uncertainty_aware:
             # we only estimate uncertainty when we activate the mode
             raise Exception('This function should not be called if uncertainty aware is not activated')
-        
+
         i = 0
         while i*20 < self.counter.value:
             dino_feat_batch = self.dino_feats[i*20:min((i+1)*20,self.counter.value),:,:,:].to(self.device)
@@ -471,7 +477,7 @@ class DepthVideo:
         if not self.uncertainty_aware:
             # we only estimate uncertainty when we activate the mode
             raise Exception('This function should not be called if uncertainty aware is not activated')
-        
+
         dino_feat_batch = self.dino_feats[idxs,:,:,:].to(self.device)
         with Lock():
             uncer = self.uncer_network(dino_feat_batch)
@@ -505,8 +511,8 @@ class DepthVideo:
             valid_depth_masks.append(depth_mask)
         poses = torch.stack(poses,dim=0).numpy()
         depths = torch.stack(depths,dim=0).numpy()
-        timestamps = torch.stack(timestamps,dim=0).numpy() 
-        valid_depth_masks = torch.stack(valid_depth_masks,dim=0).numpy()       
+        timestamps = torch.stack(timestamps,dim=0).numpy()
+        valid_depth_masks = torch.stack(valid_depth_masks,dim=0).numpy()
         np.savez(path,poses=poses,depths=depths,timestamps=timestamps,valid_depth_masks=valid_depth_masks)
         self.printer.print(f"Saved final depth video: {path}",FontColor.INFO)
 

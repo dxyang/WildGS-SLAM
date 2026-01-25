@@ -55,14 +55,14 @@ def get_loss_tracking(config, image, depth, opacity, viewpoint, monocular=True, 
 def get_loss_tracking_rgb(config, image, opacity, viewpoint, uncertainty=None):
     """Compute RGB tracking loss between rendered and ground truth images.
     This function adds uncertainty mask on the original function from MonoGS
-    
+
     Args:
         config: Configuration dictionary containing training parameters
         image: Rendered RGB image tensor (3, H, W)
-        opacity: Opacity tensor (1, H, W) 
+        opacity: Opacity tensor (1, H, W)
         viewpoint: Camera object containing ground truth image and gradient mask
         uncertainty: Optional uncertainty estimates (H, W)
-    
+
     Returns:
         Scalar loss tensor
     """
@@ -79,7 +79,7 @@ def get_loss_tracking_rgb(config, image, opacity, viewpoint, uncertainty=None):
     l1 = opacity * torch.abs(image * rgb_pixel_mask - gt_image * rgb_pixel_mask)
     if uncertainty is not None:
         # Weight loss inversely proportional to uncertainty
-        # Higher uncertainty -> lower weight 
+        # Higher uncertainty -> lower weight
         # Zero out weights below 0.1 to ignore highly uncertain regions (Todo: verify this is useful)
         weights = 0.5 / (uncertainty.unsqueeze(0))**2
         weights = torch.where(weights < 0.1, 0.0, weights)
@@ -156,8 +156,8 @@ def get_loss_mapping_uncertainty(
     freeze_uncertainty_loss: bool = False,  # Renamed parameter
 ) -> Tuple[Tensor, Tensor]:
     """Compute mapping loss with uncertainty estimation for SLAM system.
-    
-    Estimates per-pixel uncertainty and combines RGB + depth losses with uncertainty 
+
+    Estimates per-pixel uncertainty and combines RGB + depth losses with uncertainty
     weighting to handle dynamic objects.
 
     Args:
@@ -184,7 +184,7 @@ def get_loss_mapping_uncertainty(
     # Get config parameters
     alpha = config["Training"].get("alpha", 0.95)
     rgb_boundary_threshold = config["Training"]["rgb_boundary_threshold"]
-    
+
     # Get reference data
     gt_img = viewpoint.original_image.cuda()
     ref_depth = torch.from_numpy(viewpoint.depth).to(
@@ -198,6 +198,7 @@ def get_loss_mapping_uncertainty(
 
     # Compute SSIM loss if enabled
     ssim_loss = 1.0 - ssim(rendered_img, gt_img) if config["Training"]["ssim_loss"] else 0.0
+    val = config["Training"]["ssim_loss"]
 
     # Predict uncertainty from features
     features = viewpoint.features.to(device=rendered_img.device)
@@ -228,14 +229,14 @@ def get_loss_mapping_uncertainty(
     weights = 0.5 / (uncer_resized.unsqueeze(0))**2
     # Zero out weights below 0.1 to ignore highly uncertain regions (Todo: verify this is useful)
     weights = torch.where(weights < 0.1, 0.0, weights)
-    
+
     rgb_loss = weights * rgb_loss
 
     # Handle full resolution option
     if config['full_resolution']:
         weights = F.interpolate(
-            weights.unsqueeze(0), 
-            l1_depth.shape[-2:], 
+            weights.unsqueeze(0),
+            l1_depth.shape[-2:],
             mode='bilinear'
         ).squeeze(0)
 
