@@ -1,10 +1,12 @@
 inherit_from: ./configs/wildgs_slam.yaml
-scene: tektite_ref_images # Replace with your scene name
+scene: tektite_2x_cc_ss1_reference_images # Replace with your scene name
+
+stride: 2            # use every X image from the dataset
 
 dataset: 'auv_rosbag'
 data:
-  input_folder: /home/dayang/localdata/gopro_slam
-  output: ./output/tektite
+  input_folder: /srv/warplab/home/dxy/mast3r_experiments/reference_images
+  output: ./output/tektite_2x_cc_ss2_reference_images
 
 cam:
   H: 540
@@ -19,6 +21,9 @@ cam:
   # W_edge: 0
   # distortion: [0.0, 0.0, 0.0, 0.0, 0.0] # Uncomment if you have distortion coefficients
 
+tracking:
+  buffer: 2500     # maximum number of keyframes that can be stored
+
 mapping:
   Training:
     alpha: 0.8 # Increase this value to make rendering loss weighs more on rgb rather than depth
@@ -27,10 +32,9 @@ mapping:
     # I recommend to set this value to be 0.1 or even 0.
     uncer_depth_mult: 0.2
 
-
 # # Uncomment the following lines to enable fast mode and GUI
-fast_mode: True
-gui: True
+fast_mode: False
+gui: False
 
 # # Uncomment the following lines to save online plotting data
 mapping:
