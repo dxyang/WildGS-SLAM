@@ -472,7 +472,7 @@ class RGB_NoPose(BaseDataset):
         self.color_paths = self.color_paths[:max_frames][::stride]
         self.n_img = len(self.color_paths)
 
-class AUV_RGB_NoPose(BaseDataset):
+class AUV_RGB_NoPose(RGB_NoPose):
     def __init__(self, cfg, device='cuda:0'
                  ):
         super(AUV_RGB_NoPose, self).__init__(cfg, device)
