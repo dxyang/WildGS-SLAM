@@ -1,12 +1,12 @@
 inherit_from: ./configs/wildgs_slam.yaml
 scene: yawzi_2x_cc_ss1_reference_images # Replace with your scene name
 
-stride: 2            # use every X image from the dataset
+stride: 3            # use every X image from the dataset
 
 dataset: 'auv_rosbag'
 data:
   input_folder: /srv/warplab/home/dxy/mast3r_experiments/reference_images
-  output: ./output/yawzi_2x_cc_ss2_reference_images
+  output: ./output/yawzi_2x_cc_ss3_reference_images
 cam:
   H: 540
   W: 960
@@ -21,7 +21,7 @@ cam:
   # distortion: [0.0, 0.0, 0.0, 0.0, 0.0] # Uncomment if you have distortion coefficients
 
 tracking:
-  buffer: 5000     # maximum number of keyframes that can be stored
+  buffer: 2500     # maximum number of keyframes that can be stored
 
 mapping:
   Training:
