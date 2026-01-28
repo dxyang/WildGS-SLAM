@@ -40,17 +40,18 @@ if __name__ == '__main__':
                  f"   output: {output_dir}\n"+ \
                  "-"*30
     print(start_info)
-    
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     config.save_config(cfg, f'{output_dir}/cfg.yaml')
 
     dataset = get_dataset(cfg)
+    import pdb; pdb.set_trace()
 
     slam = SLAM(cfg,dataset)
     slam.run()
 
     end_time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
     print("-"*30+Fore.LIGHTRED_EX+f"\nWildGS-SLAM finishes!\n"+Style.RESET_ALL+f"{end_time}\n"+"-"*30)
-
+    import pdb; pdb.set_trace()
