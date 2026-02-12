@@ -25,6 +25,10 @@ from slam_package import EVOEvaluator
 
 device = torch.device("cuda")
 
+
+K_TEKTITE_DELAY_S = 0.2906 # do RAW_IMAGE_TIMESTAMP - K_TEKTITE_DELAY or odom_timestamp + K_TEKTITE_DELAY
+K_YAWZI_DELAY_S = 0.04152 # do RAW_IMAGE_TIMESTAMP - K_YAWZI_DELAY_S or odom_timestamp + K_YAWZI_DELAY_S
+
 # convert trajectory to GTSAM Pose list
 def to_gtsam_poses(T_w_cs: List[np.ndarray]) -> List:
     import gtsam
@@ -35,6 +39,14 @@ def to_gtsam_poses(T_w_cs: List[np.ndarray]) -> List:
         pose = gtsam.Pose3(gtsam.Rot3(R_w_c), gtsam.Point3(t_w_c))
         poses.append(pose)
     return poses
+
+def write_tum_file(tum_fp, T_world_cams, timestamps):
+    with open(tum_fp, 'w') as f:
+        for T_world_cam, timestamp in zip(T_world_cams, timestamps):
+            rot = T_world_cam[:3, :3]
+            translation = T_world_cam[:3, 3]
+            quat = R.from_matrix(rot).as_quat()  # x, y, z, w
+            f.write(f"{timestamp:.6f} {translation[0]:.6f} {translation[1]:.6f} {translation[2]:.6f} {quat[0]:.6f} {quat[1]:.6f} {quat[2]:.6f} {quat[3]:.6f}\n")
 
 def get_resized_color(frame_reader, img):
     return cv2.resize(img, (frame_reader.W_out_with_edge, frame_reader.H_out_with_edge))
@@ -82,6 +94,7 @@ def main(dataset_name, exp_scene, write_images: bool = False):
 
         timestamp_s, timestamp_ns = Path(color_path).stem.split('-')
         t_s = float(timestamp_s) + float(timestamp_ns) * 1e-9
+        t_s -= K_TEKTITE_DELAY_S if site_str == "tektite" else K_YAWZI_DELAY_S
         timestamps_s.append(t_s)
 
     rot_wxyz = [R.from_matrix(T_world_cam[:3, :3]).as_quat(scalar_first=True) for T_world_cam in traj_T_w_c]
@@ -89,6 +102,7 @@ def main(dataset_name, exp_scene, write_images: bool = False):
 
     slam_evaluator = EVOEvaluator()
     gtsam_poses = to_gtsam_poses(traj_T_w_c)
+    write_tum_file(f"{site_str}_wildgsslam.txt", traj_T_w_c, timestamps_s)
     slam_metrics_from_wildgs = slam_evaluator.evaluate_trajectories(
         reference_tum=reference_tum,
         estimated_poses=gtsam_poses,
